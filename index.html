@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Fashion MNIST Classifier</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #121831;
+      --text: #e7e9ee;
+      --muted: #a8afc3;
+      --primary: #6ea8fe;
+      --primary-2: #4c82f7;
+      --accent: #22c55e;
+      --danger: #ef4444;
+      --card: #161c36;
+      --border: #263157;
+      --shadow: 0 10px 30px rgba(0,0,0,0.25);
+    }
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f6f7fb;
+        --panel: #ffffff;
+        --text: #0f172a;
+        --muted: #475569;
+        --primary: #2563eb;
+        --primary-2: #1d4ed8;
+        --accent: #16a34a;
+        --danger: #dc2626;
+        --card: #ffffff;
+        --border: #e2e8f0;
+        --shadow: 0 10px 30px rgba(2,6,23,0.08);
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      background: radial-gradient(1200px 600px at 20% -20%, rgba(78,116,248,0.15), transparent 50%),
+                  radial-gradient(900px 400px at 120% 20%, rgba(34,197,94,0.15), transparent 50%),
+                  var(--bg);
+      color: var(--text);
+    }
+    .container { max-width: 1100px; margin: 0 auto; padding: 32px 20px; }
+    .panel {
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.00)), var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: var(--shadow);
+    }
+    h1 { margin: 0 0 8px; font-size: 28px; letter-spacing: 0.2px; }
+    p.lead { margin: 0 0 20px; color: var(--muted); }
+
+    .controls { display: grid; gap: 16px; grid-template-columns: 1fr; }
+    .row { display: grid; gap: 12px; grid-template-columns: 1fr auto; align-items: end; }
+    .input {
+      display: block;
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px dashed var(--border);
+      border-radius: 10px;
+      background: var(--card);
+      color: var(--text);
+    }
+    select {
+      background: var(--card);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 8px;
+      width: 100%;
+    }
+
+    .btn {
+      appearance: none;
+      border: none;
+      background: var(--primary);
+      color: white;
+      padding: 10px 16px;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.06s ease, background 0.2s ease, box-shadow 0.2s ease;
+      box-shadow: 0 6px 16px rgba(78,116,248,0.25);
+    }
+    .btn:hover { background: var(--primary-2); transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+    .btn.secondary { background: transparent; color: var(--primary); border: 1px solid var(--primary); box-shadow: none; }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .section-title { margin: 20px 0 8px; font-size: 18px; color: var(--muted); }
+
+    .grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px;
+      text-align: center;
+      transition: transform 0.08s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .card:hover { transform: translateY(-2px); border-color: var(--primary); box-shadow: 0 8px 20px rgba(37,99,235,0.20); }
+    .thumb {
+      width: 120px; height: 120px; margin: 6px auto 10px;
+      object-fit: contain; background: #0b1229; border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+    .filename { font-size: 12px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      background: rgba(110,168,254,0.15);
+      color: var(--primary);
+      border: 1px solid rgba(110,168,254,0.35);
+    }
+    .badge.ok { background: rgba(34,197,94,0.15); border-color: rgba(34,197,94,0.35); color: var(--accent); }
+    .badge.err { background: rgba(239,68,68,0.15); border-color: rgba(239,68,68,0.35); color: var(--danger); }
+
+    .results { margin-top: 10px; }
+    .spinner {
+      display: inline-block; width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.4);
+      border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: -3px; margin-right: 8px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 700px) {
+      .row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="panel">
+      <h1>Fashion MNIST Classifier</h1>
+      <p class="lead">
+        Upload one or more images (PNG, JPG, JPEG, WEBP). They’ll be converted to 28×28 grayscale for prediction.
+      </p>
+
+      <div class="controls">
+        <div class="row">
+          <div>
+            <label class="section-title">Upload your images</label>
+            <input class="input" type="file" id="fileInput" multiple accept="image/png,image/jpeg,image/jpg,image/webp">
+          </div>
+          <div>
+            <label class="section-title">Actions</label>
+            <button id="btnClassify" class="btn">Classify Images</button>
+          </div>
+        </div>
+
+        <div>
+          <label class="section-title">Or select from sample images</label>
+          <div class="row">
+            <select id="sampleSelect" multiple size="5"></select>
+            <button id="btnAddSamples" class="btn secondary">Add Selected Samples</button>
+          </div>
+        </div>
+      </div>
+
+      <h3 class="section-title">Selected Images (Resized to 28×28 Grayscale)</h3>
+      <div class="grid" id="imageGrid"></div>
+
+      <div class="results" id="results"></div>
+    </div>
+  </div>
+
+  <script>
+    const API_URL    = "/predict";
+    const SAMPLE_DIR = "/static/fashion_pieces_10/";
+    const sampleImages = [
+      "T-shirt_top.png", "Trouser.png", "Pullover.png", "Dress.png", "Coat.png",
+      "Sandal.png", "Shirt.png", "Sneaker.png", "Bag.png", "Ankle_boot.png"
+    ];
+    const fileToLabel = {
+      "T-shirt_top.png": "T-shirt/top", "Trouser.png": "Trouser", "Pullover.png": "Pullover",
+      "Dress.png": "Dress", "Coat.png": "Coat", "Sandal.png": "Sandal", "Shirt.png": "Shirt",
+      "Sneaker.png": "Sneaker", "Bag.png": "Bag", "Ankle_boot.png": "Ankle boot"
+    };
+
+    let selectedFiles = [];
+    let selectedSamplePaths = [];
+
+    const sampleSelect = document.getElementById("sampleSelect");
+    sampleImages.forEach(fname => {
+      const opt = document.createElement("option");
+      opt.value = fname;
+      opt.textContent = fname.replace(/_/g, " ").replace(".png", "");
+      sampleSelect.appendChild(opt);
+    });
+
+    document.getElementById("fileInput").addEventListener("change", (e) => {
+      selectedFiles = Array.from(e.target.files);
+      selectedSamplePaths = [];
+      renderImages();
+    });
+
+    document.getElementById("btnAddSamples").addEventListener("click", addSamples);
+    function addSamples() {
+      selectedSamplePaths = Array.from(sampleSelect.selectedOptions).map(opt => SAMPLE_DIR + opt.value);
+      selectedFiles = [];
+      renderImages();
+    }
+
+    function renderImages() {
+      const grid = document.getElementById("imageGrid");
+      grid.innerHTML = "";
+      const filesToShow = selectedFiles.length ? selectedFiles : selectedSamplePaths;
+      filesToShow.forEach(file => {
+        const card = document.createElement("div");
+        card.className = "card";
+        const img = document.createElement("img");
+        img.className = "thumb";
+        if (typeof file === "string") img.src = file; else img.src = URL.createObjectURL(file);
+        img.onload = () => { if (typeof file !== "string") URL.revokeObjectURL(img.src); };
+        const name = typeof file === "string" ? file.split("/").pop() : file.name;
+        const fn = document.createElement("div");
+        fn.className = "filename";
+        fn.textContent = name;
+        card.appendChild(img);
+        card.appendChild(fn);
+        grid.appendChild(card);
+      });
+    }
+
+    document.getElementById("btnClassify").addEventListener("click", classifyImages);
+    async function classifyImages() {
+      const btn = document.getElementById("btnClassify");
+      const resultsDiv = document.getElementById("results");
+      resultsDiv.innerHTML = `<span class="spinner"></span><span>Classifying...</span>`;
+      btn.disabled = true;
+
+      const filesToClassify = selectedFiles.length ? selectedFiles : selectedSamplePaths;
+      if (!filesToClassify.length) {
+        resultsDiv.innerHTML = `<span class="badge err">No images selected.</span>`;
+        btn.disabled = false; return;
+      }
+
+      const predictions = [];
+      let html = `<h3 class="section-title">Results</h3><div class="grid">`;
+
+      for (let i = 0; i < filesToClassify.length; i++) {
+        const file = filesToClassify[i];
+        let imgSrc, fileName;
+        const formData = new FormData();
+
+        if (typeof file === "string") {
+          const resp = await fetch(file);
+          const blob = await resp.blob();
+          fileName = file.split("/").pop();
+          imgSrc = file;
+          formData.append("file", blob, fileName);
+        } else {
+          fileName = file.name;
+          imgSrc = URL.createObjectURL(file);
+          formData.append("file", file, fileName);
+        }
+
+        try {
+          const apiResp = await fetch(API_URL, { method: "POST", body: formData });
+          const text = await apiResp.text();
+          let data; try { data = JSON.parse(text); } catch { data = { error: text }; }
+
+          if (!apiResp.ok || data.error) {
+            html += cardError(imgSrc, fileName, data.error || apiResp.statusText);
+          } else {
+            predictions.push({ fileName, label: data.label, confidence: data.confidence });
+            html += cardResult(imgSrc, fileName, data.label, data.confidence);
+          }
+        } catch (e) {
+          html += cardError(imgSrc, fileName, String(e));
+        } finally {
+          if (typeof file !== "string") URL.revokeObjectURL(imgSrc);
+        }
+      }
+
+      html += `</div>`;
+
+      const allSamples = filesToClassify.every(f => typeof f === "string");
+      if (allSamples && predictions.length) {
+        const gt = predictions.map(p => fileToLabel[p.fileName] || "UNKNOWN");
+        const acc = accuracy(gt, predictions.map(p => p.label));
+        html += `<p class="section-title">Accuracy on selected samples: <span class="badge ok">${(acc*100).toFixed(1)}%</span></p>`;
+      }
+
+      resultsDiv.innerHTML = html;
+      btn.disabled = false;
+    }
+
+    function cardResult(imgSrc, fileName, label, confidence) {
+      const pct = (confidence * 100).toFixed(1);
+      return `<div class="card">
+        <img class="thumb" src="${imgSrc}" alt="" />
+        <div class="filename"><b>${fileName}</b></div>
+        <div class="badge ok">Predicted: ${label}</div>
+        <div class="filename">Confidence: ${pct}%</div>
+      </div>`;
+    }
+    function cardError(imgSrc, fileName, error) {
+      return `<div class="card">
+        <img class="thumb" src="${imgSrc}" alt="" />
+        <div class="filename"><b>${fileName}</b></div>
+        <div class="badge err">Error</div>
+        <div class="filename">${escapeHtml(error || "Request failed")}</div>
+      </div>`;
+    }
+    function accuracy(yTrue, yPred) {
+      let c = 0; for (let i = 0; i < yTrue.length; i++) if (yTrue[i] === yPred[i]) c++;
+      return c / yTrue.length;
+    }
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"'`=\/]/g, c => ({
+        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','/':'&#x2F;','`':'&#x60;','=':'&#x3D;'
+      }[c]));
+    }
+  </script>
+</body>
+</html>
