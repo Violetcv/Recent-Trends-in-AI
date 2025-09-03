@@ -1,9 +1,6 @@
-streamlit
 tensorflow
 pillow
 numpy
-scikit-learn
-matplotlib
 fastapi
 aiofiles
 python-multipart

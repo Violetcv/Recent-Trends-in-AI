@@ -27,7 +27,7 @@ os.makedirs(static_dir, exist_ok=True)
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 # Serve the frontend from root so API and UI share the same origin
-FRONTEND_PATH = os.path.join(BASE_DIR, "frontend.html")
+FRONTEND_PATH = os.path.join(BASE_DIR, "index.html")
 
 @app.get("/", response_class=HTMLResponse)
 def index():
