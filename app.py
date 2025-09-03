@@ -3,10 +3,15 @@ import numpy as np
 from PIL import Image
 import tensorflow as tf
 
-# Load the trained model
+
+# Load the trained model with error handling
 @st.cache_resource
 def load_model():
-    return tf.keras.models.load_model("cnn_fashion_mnist.h5")
+    try:
+        return tf.keras.models.load_model("cnn_fashion_mnist.h5")
+    except Exception as e:
+        st.error(f"Error loading model: {e}")
+        return None
 
 model = load_model()
 
@@ -26,17 +31,25 @@ uploaded_files = st.file_uploader(
 if uploaded_files:
     images = []
     for uploaded_file in uploaded_files:
-        img = Image.open(uploaded_file).convert("L").resize((28, 28))
-        arr = np.array(img, dtype="float32") / 255.0
-        images.append(arr)
-    images_np = np.stack(images)[..., np.newaxis]  # (N,28,28,1)
+        try:
+            img = Image.open(uploaded_file).convert("L").resize((28, 28))
+            arr = np.array(img, dtype="float32") / 255.0
+            images.append(arr)
+        except Exception as e:
+            st.error(f"Error processing image {uploaded_file.name}: {e}")
+    try:
+        images_np = np.stack(images)[..., np.newaxis]  # (N,28,28,1)
+        if model is not None:
+            # Predict
+            probs = model.predict(images_np)
+            preds = np.argmax(probs, axis=1)
+            pred_labels = [class_names[i] for i in preds]
 
-    # Predict
-    probs = model.predict(images_np)
-    preds = np.argmax(probs, axis=1)
-    pred_labels = [class_names[i] for i in preds]
-
-    # Display results
-    st.write("### Results")
-    for i, (img, label) in enumerate(zip(images, pred_labels)):
-        st.image(img, width=100, caption=f"Predicted: {label}")
+            # Display results
+            st.write("### Results")
+            for i, (img, label) in enumerate(zip(images, pred_labels)):
+                st.image(img, width=100, caption=f"Predicted: {label}")
+        else:
+            st.warning("Model is not loaded. Cannot make predictions.")
+    except Exception as e:
+        st.error(f"Error during prediction: {e}")
